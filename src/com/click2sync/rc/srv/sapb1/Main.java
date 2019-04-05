@@ -123,18 +123,43 @@ public class Main {
 		if(args.length > 0) {//debugging
 			boolean cli = false;
 			boolean testbpgen = false;
+			boolean testquotationorder = false;
+			boolean testhana = false;
+			boolean testbuildc2sproduct = false;
+			String c2sprodid = "";
 			for(int i=0; i<args.length; i+=1) {
 				System.out.println(args[i]);
 				if(args[i].equals("--cli")) {
 					cli = true;
-				}else if(args[i].equals("--testbpgen")) {
+				}
+				if(args[i].equals("--testbpgen")) {
 					testbpgen = true;
+				}
+				if(args[i].equals("--testquotationorder")) {
+					testquotationorder = true;
+				}
+				if(args[i].equals("--testhana")) {
+					testhana = true;
+				}
+				if(args[i].startsWith("--testbuildc2sproduct")) {
+					testbuildc2sproduct = true;
+					String[] parts = args[i].split("=");
+					c2sprodid = parts[1];
 				}
 			}
 			if(cli) {
 				if(testbpgen) {
 					app = new Main();
 					app.testbpgen();
+				} else if(testquotationorder){
+					app = new Main();
+					app.testquotationorder();
+				} else if(testhana){
+					app = new Main();
+					app.testhana();
+				} else if(testbuildc2sproduct){
+					app = new Main();
+					app.testbuildc2sproduct(c2sprodid);
 				}else {
 					System.out.println("Could not understand the intended operation");
 				}
@@ -164,6 +189,39 @@ public class Main {
 		}
 		
 	}
+
+	private void testquotationorder() {
+		
+		try {
+			sap.sense();
+			sap.testquotationorder();
+		} catch (NoSAPB1Exception e) {
+			e.printStackTrace();
+		}
+		
+	}
+
+	private void testbuildc2sproduct(String c2sprodid) {
+		
+		try {
+			
+			sap.sense();
+			sap.testbuildc2sproduct(c2sprodid);
+		} catch (NoSAPB1Exception e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	private void testhana() {
+		
+		try {
+			sap.sense();
+		} catch (NoSAPB1Exception e) {
+			e.printStackTrace();
+		}
+		
+	}
 	
 	private boolean checkIfWeAreFetchingRemote() throws C2SUnreachableException, C2SRCServiceException {
 		
@@ -183,7 +241,7 @@ public class Main {
 		String strategy = c2s.getStrategy();
 		String upstreamstatus = c2s.getUpstreamStatus();
 		String entity = c2s.getEntity();
-		Long offsetdate = c2s.getCursorOffset();
+		String offsetdate = c2s.getCursorOffset();
 		
 		if(upstreamstatus != null && upstreamstatus.equals("waiting")) {
 			//if is waiting, good, change to initialized
@@ -199,13 +257,13 @@ public class Main {
 				if(uploadProducts) {
 					if(strategy != null && strategy.equals("pingsample")) {
 						sap.setProductsStreamCursor(offsetdate);
-						if(sap.hasMoreProducts()) {
+						if(sap.hasMoreProducts(offsetdate)) {
 							JSONObject product = sap.nextProduct();
 							c2s.setProductToUploadOnBuffer(product, strategy);
 						}
 					} else {
 						sap.setProductsStreamCursor(offsetdate);
-						while(sap.hasMoreProducts()) {
+						while(sap.hasMoreProducts(offsetdate)) {
 							JSONObject product = sap.nextProduct();
 							c2s.setProductToUploadOnBuffer(product, strategy);
 						}
@@ -219,13 +277,13 @@ public class Main {
 				if(uploadOrders) {
 					if(strategy != null && strategy.equals("pingsample")) {
 						sap.setOrdersStreamCursor(offsetdate);
-						if(sap.hasMoreOrders(offsetdate)) {
+						if(sap.hasMoreOrders()) {
 							JSONObject order = sap.nextOrder();
 							c2s.setOrderToUploadOnBuffer(order, strategy);
 						}
 					} else {
 						sap.setOrdersStreamCursor(offsetdate);
-						while(sap.hasMoreOrders(offsetdate)) {
+						while(sap.hasMoreOrders()) {
 							JSONObject order = sap.nextOrder();
 							c2s.setOrderToUploadOnBuffer(order, strategy);
 						}

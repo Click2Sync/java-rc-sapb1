@@ -144,12 +144,12 @@ public class C2SProxy {
 		
 	}
 	
-	public Long getCursorOffset() throws C2SUnreachableException {
+	public String getCursorOffset() throws C2SUnreachableException {
 		
 		String key = getPrivateKey();
 		String url = "/api/adapters/custom/reverse/connection/"+key+"/cursoroffset";
 		JSONObject response = HTTPWrapper.get(url, delegate.config);
-		Long value = (Long) response.get("cursoroffset");
+		String value = ""+response.get("cursoroffset");
 		return value;
 		
 	}
