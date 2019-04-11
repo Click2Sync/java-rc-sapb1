@@ -277,13 +277,13 @@ public class Main {
 				if(uploadOrders) {
 					if(strategy != null && strategy.equals("pingsample")) {
 						sap.setOrdersStreamCursor(offsetdate);
-						if(sap.hasMoreOrders()) {
+						if(sap.hasMoreOrders(offsetdate)) {
 							JSONObject order = sap.nextOrder();
 							c2s.setOrderToUploadOnBuffer(order, strategy);
 						}
 					} else {
 						sap.setOrdersStreamCursor(offsetdate);
-						while(sap.hasMoreOrders()) {
+						while(sap.hasMoreOrders(offsetdate)) {
 							JSONObject order = sap.nextOrder();
 							c2s.setOrderToUploadOnBuffer(order, strategy);
 						}

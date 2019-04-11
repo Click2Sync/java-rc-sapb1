@@ -19,5 +19,7 @@
 	<classpathentry kind="lib" path="lib/automaton.jar"/>
 	<classpathentry kind="lib" path="lib/sboapi.jar"/>
 	<classpathentry kind="lib" path="lib/sbowrapper.jar"/>
+	<classpathentry kind="lib" path="lib/WinRun4J-src.jar"/>
+	<classpathentry kind="lib" path="lib/WinRun4J.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
