@@ -68,9 +68,10 @@ public class SAPB1Proxy {
 	
 	JSONArray explodedprodsbuffer;
 	
-	public int currentproduct = 0;
-	public int offsetproducts = 0;
-	public int offsetorders = 0;
+	Long offsetproductsdate = 0L;
+	public int offsetproductscurr = 0;
+	Long offsetordersdate = 0L;
+	public int offsetorderscurr = 0;
 	
 	public SAPB1Proxy(Main main) {
 		delegate = main;
@@ -151,24 +152,32 @@ public class SAPB1Proxy {
 		Date date = new Date(0);
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 		String dateFormatted;
-		if(!offset.equals("0")) {
+		if(!offset.equals("0") && offsetsplit.length > 1) {
 			offsetuse = offsetsplit[1];
-			currentproduct = Integer.parseInt(offsetuse);
-			date = new Date(Long.parseLong(offsetsplit[0]));
+			offsetproductsdate = Long.parseLong(offsetsplit[0]);
+			offsetproductscurr = Integer.parseInt(offsetsplit[1]);
+			date = new Date(offsetproductsdate);
 			dateFormatted = sdf.format(date);
 		} else {
+			offsetuse = offset;
+			offsetproductsdate = Long.parseLong(offsetuse);
+			offsetproductscurr = 0;
+			date = new Date(offsetproductsdate);
 			dateFormatted = sdf.format(date);
 		}
 
-		String query = "SELECT * FROM dbo.OITM WHERE UpdateDate >= ? ORDER BY UpdateDate ASC OFFSET "+(offsetproducts+1)+" ROWS FETCH NEXT 1000 ROWS ONLY";
+		String query = "SELECT * FROM dbo.OITM WHERE UpdateDate >= ? ORDER BY UpdateDate ASC OFFSET "+(offsetproductscurr)+" ROWS FETCH NEXT 1000 ROWS ONLY";
 		String overridequery = delegate.config.getProperty("filterquerysqloverride");
 		if(overridequery != null && overridequery.length() > 0) {
 			query = overridequery;
 		}
 		query = query.replace("?", "'"+dateFormatted+"'");
-		query = query.replace("offsetproducts", ""+(currentproduct+1));
+		query = query.replace("offsetproducts", ""+offsetproductscurr);
 		
+		ServiceLogger.log("cursor: "+offset);
+		ServiceLogger.log("query products: "+query);
 		productsrecordset.doQuery(query);
+		ServiceLogger.log("resultsetcount:"+productsrecordset.getRecordCount()+" isEoF:"+productsrecordset.isEoF()+" isBoF:"+productsrecordset.isBoF());
 		if(productsrecordset.getRecordCount() > 0 && !productsrecordset.isEoF()) {
 			products.getBrowser().setRecordset(productsrecordset);
 		}
@@ -177,14 +186,16 @@ public class SAPB1Proxy {
 	
 	public boolean hasMoreProducts(String offsetdate) throws NoSAPB1Exception {
 
+		ServiceLogger.log("hasMoreProducts: "+offsetdate);
+		ServiceLogger.log("hasMoreProductsCount:"+products.getBrowser().getRecordCount()+" isEoF:"+products.getBrowser().isEoF()+" isBoF:"+products.getBrowser().isBoF());
 		if(explodedprodsbuffer != null && explodedprodsbuffer.size() > 0) {
 			return true;
 		} else {
 
 			if(products.getBrowser().isEoF()) {
 				
-				offsetproducts = offsetproducts+1000;
-				this.setProductsStreamCursor(offsetdate);
+				String newoffset = offsetproductsdate+" - "+offsetproductscurr;
+				this.setProductsStreamCursor(newoffset);
 				if(productsrecordset.getRecordCount() == 0 || (productsrecordset.isBoF() && productsrecordset.isEoF())) {
 					return false;
 				}else {
@@ -219,23 +230,36 @@ public class SAPB1Proxy {
 		
 		String[] offsetsplit = offset.split(" - ");
 		String offsetuse = "0";
+		Date date = new Date(0);
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+		String dateFormatted;
+		
 		if(!offset.equals("0") && offsetsplit.length > 1) {
 			offsetuse = offsetsplit[1];
+			offsetordersdate = Long.parseLong(offsetsplit[0]);
+			offsetorderscurr = Integer.parseInt(offsetsplit[1]);
+			date = new Date(offsetordersdate);
+			dateFormatted = sdf.format(date);
+		} else {
+			offsetuse = offset;
+			offsetordersdate = Long.parseLong(offsetuse);
+			offsetorderscurr = 0;
+			date = new Date(offsetordersdate);
+			dateFormatted = sdf.format(date);
 		}
-		Long offdate = Long.parseLong(offsetuse);
-		Date date = new Date(offdate);
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-		String dateFormatted = sdf.format(date);
 		
-		String query = "SELECT * FROM dbo.ORDR WHERE UpdateDate >='"+dateFormatted+"' ORDER BY DocNum DESC OFFSET "+(offsetorders+1)+" ROWS FETCH NEXT 1000 ROWS ONLY";
+		String query = "SELECT * FROM dbo.ORDR WHERE UpdateDate >='"+dateFormatted+"' ORDER BY DocNum DESC OFFSET "+(offsetorderscurr)+" ROWS FETCH NEXT 1000 ROWS ONLY";
 		String overridequery = delegate.config.getProperty("filterquerysqloverrideorders");
 		if(overridequery != null && overridequery.length() > 0) {
 			query = overridequery;
 		}
 		query = query.replace("?", "'"+dateFormatted+"'");
-		query = query.replace("offsetorders", ""+(offsetorders+1));
+		query = query.replace("offsetorders", ""+offsetorderscurr);
 		
+		ServiceLogger.log("cursor: "+offset);
+		ServiceLogger.log("query orders: "+query);
 		ordersrecordset.doQuery(query);
+		ServiceLogger.log("resultsetcount:"+ordersrecordset.getRecordCount()+" isEoF:"+ordersrecordset.isEoF()+" isBoF:"+ordersrecordset.isBoF());
 		if(ordersrecordset.getRecordCount() > 0 && !ordersrecordset.isEoF()) {
 			orders.getBrowser().setRecordset(ordersrecordset);
 		}
@@ -243,10 +267,13 @@ public class SAPB1Proxy {
 	}
 	
 	public boolean hasMoreOrders(String offsetdate) throws NoSAPB1Exception {
+		
+		ServiceLogger.log("hasMoreOrders: "+offsetdate);
+		ServiceLogger.log("hasMoreOrdersCount:"+orders.getBrowser().getRecordCount()+" isEoF:"+orders.getBrowser().isEoF()+" isBoF:"+orders.getBrowser().isBoF());
 		if(orders.getBrowser().isEoF()) {
 			
-			offsetorders= offsetorders+1000;
-			this.setOrdersStreamCursor(offsetdate);
+			String newoffset = offsetordersdate+" - "+offsetorderscurr;
+			this.setOrdersStreamCursor(newoffset);
 			if(ordersrecordset.getRecordCount() == 0 || (ordersrecordset.isBoF() && ordersrecordset.isEoF())) {
 				return false;
 			}else {
@@ -599,14 +626,10 @@ public class SAPB1Proxy {
 				if(item.getName().equals("UpdateDate")) {
 					Date updatedate = (Date) item.getValue();
 					String updatedatewithpaging;
-					if((updatedate+"").equals("Sat Dec 30 00:00:00 CST 1899")) {
-						updatedatewithpaging = "0 - "+currentproduct;
-						product.put("last_updated", updatedatewithpaging+0);
-					} else {
-						updatedatewithpaging = updatedate.getTime()+" - "+currentproduct;
-						product.put("last_updated", updatedatewithpaging+0);						
-					}
-					currentproduct=currentproduct+1;
+					updatedatewithpaging = updatedate.getTime()+" - "+offsetproductscurr;
+					product.put("last_updated", updatedatewithpaging);
+					ServiceLogger.log("product last_updated = "+product.get("last_updated"));
+					offsetproductscurr=offsetproductscurr+1;
 				}
 				if(item.getName().equals("U_Modelo")) {
 					product.put("brand",""+item.getValue());
@@ -921,7 +944,11 @@ public class SAPB1Proxy {
 				try {
 					if(orderfield.getName().equals("UpdateDate")) {
 						Date updatedate = (Date) orderfield.getValue();
-						order.put("last_updated", updatedate.getTime()+0);
+						String updatedatewithpaging;
+						updatedatewithpaging = updatedate.getTime()+" - "+offsetorderscurr;
+						order.put("last_updated", updatedatewithpaging);
+						ServiceLogger.log("order last_updated = "+order.get("last_updated"));
+						offsetorderscurr=offsetorderscurr+1;
 						break;
 					}
 				}catch(Exception e) {}
