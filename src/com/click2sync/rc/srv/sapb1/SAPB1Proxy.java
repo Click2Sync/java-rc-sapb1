@@ -453,6 +453,7 @@ public class SAPB1Proxy {
 					lines.setQuantity(1d);
 					lines.setUnitPrice(convertToDouble(orderItem.get("unitPrice"))/(1.16));
 				}else {
+					
 					Double quantity = (double) ((Long)orderItem.get("quantity")).longValue();
 					lines.setItemCode(itemcode);
 					lines.setQuantity(quantity);
