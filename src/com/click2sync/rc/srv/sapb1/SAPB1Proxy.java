@@ -26,7 +26,6 @@ import com.sap.smb.sbo.api.IDocuments;
 import com.sap.smb.sbo.api.IField;
 import com.sap.smb.sbo.api.IFields;
 import com.sap.smb.sbo.api.IItemBarCodes;
-import com.sap.smb.sbo.api.IItemUnitOfMeasurements;
 import com.sap.smb.sbo.api.IItemWarehouseInfo;
 import com.sap.smb.sbo.api.IItems_Prices;
 import com.sap.smb.sbo.api.IUnitOfMeasurementGroup;
@@ -72,6 +71,7 @@ public class SAPB1Proxy {
 	public int offsetproductscurr = 0;
 	Long offsetordersdate = 0L;
 	public int offsetorderscurr = 0;
+	String last_ts_discovered = "";
 	
 	public SAPB1Proxy(Main main) {
 		delegate = main;
@@ -165,6 +165,7 @@ public class SAPB1Proxy {
 			date = new Date(offsetproductsdate);
 			dateFormatted = sdf.format(date);
 		}
+		last_ts_discovered = ""+offsetproductsdate;
 
 		String query = "SELECT * FROM dbo.OITM WHERE UpdateDate >= ? ORDER BY UpdateDate ASC OFFSET "+(offsetproductscurr)+" ROWS FETCH NEXT 1000 ROWS ONLY";
 		String overridequery = delegate.config.getProperty("filterquerysqloverride");
@@ -182,6 +183,19 @@ public class SAPB1Proxy {
 			products.getBrowser().setRecordset(productsrecordset);
 		}
 		
+	}
+
+	public boolean hasProducts() {
+		ServiceLogger.log("products record count: " + products.getBrowser().getRecordCount());
+		if (products.getBrowser().getRecordCount() > 0) {
+			if(products.getItemCode().equals("")) {
+				return false;
+			} else {
+				return true;
+			}
+		} else {
+			return false;
+		}
 	}
 	
 	public boolean hasMoreProducts(String offsetdate) throws NoSAPB1Exception {
@@ -217,7 +231,7 @@ public class SAPB1Proxy {
 		JSONObject product = null;
 		if(explodedprodsbuffer == null || explodedprodsbuffer.size() == 0) {
 			products.getBrowser().moveNext();
-			explodedprodsbuffer = convertSAPProductToC2SProducts();
+			explodedprodsbuffer = convertSAPProductToC2SProduct();
 		}
 		if(explodedprodsbuffer != null && explodedprodsbuffer.size() > 0) {
 			product = (JSONObject) explodedprodsbuffer.remove(0);
@@ -241,12 +255,13 @@ public class SAPB1Proxy {
 			date = new Date(offsetordersdate);
 			dateFormatted = sdf.format(date);
 		} else {
-			offsetuse = offset;
+			offsetuse = offset.equals("") ? "0" : offset;
 			offsetordersdate = Long.parseLong(offsetuse);
 			offsetorderscurr = 0;
 			date = new Date(offsetordersdate);
 			dateFormatted = sdf.format(date);
 		}
+		last_ts_discovered = ""+offsetordersdate;
 		
 		String query = "SELECT * FROM dbo.ORDR WHERE UpdateDate >='"+dateFormatted+"' ORDER BY DocNum DESC OFFSET "+(offsetorderscurr)+" ROWS FETCH NEXT 1000 ROWS ONLY";
 		String overridequery = delegate.config.getProperty("filterquerysqloverrideorders");
@@ -264,6 +279,15 @@ public class SAPB1Proxy {
 			orders.getBrowser().setRecordset(ordersrecordset);
 		}
 
+	}
+
+	public boolean hasOrders() {
+		ServiceLogger.log("orders record count: " + orders.getBrowser().getRecordCount());
+		if (orders.getBrowser().getRecordCount() > 0) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 	
 	public boolean hasMoreOrders(String offsetdate) throws NoSAPB1Exception {
@@ -287,7 +311,7 @@ public class SAPB1Proxy {
 	
 	public JSONObject nextOrder() throws NoSAPB1Exception {
 		
-		JSONObject order = convertSAPOrderToC2SOrder();
+		JSONObject order = convertSAPOrderToC2SOrder(orders);
 		orders.getBrowser().moveNext();
 		return order;
 		
@@ -453,7 +477,6 @@ public class SAPB1Proxy {
 					lines.setQuantity(1d);
 					lines.setUnitPrice(convertToDouble(orderItem.get("unitPrice"))/(1.16));
 				}else {
-					
 					Double quantity = (double) ((Long)orderItem.get("quantity")).longValue();
 					lines.setItemCode(itemcode);
 					lines.setQuantity(quantity);
@@ -526,7 +549,7 @@ public class SAPB1Proxy {
 					String insertedkey = myCompany.getNewObjectCode();
 					orders.getByKey(Integer.parseInt(insertedkey));
 					oDocs.release();
-					return convertSAPOrderToC2SOrder();
+					return convertSAPOrderToC2SOrder(orders);
 				}
 			} catch (SBOCOMException e) {
 				String error = myCompany.getLastErrorDescription();
@@ -537,7 +560,7 @@ public class SAPB1Proxy {
 		} else {//is update
 			
 			orders.getByKey(orderdockey);
-			return convertSAPOrderToC2SOrder();
+			return convertSAPOrderToC2SOrder(orders);
 			
 		}
 		
@@ -596,13 +619,13 @@ public class SAPB1Proxy {
 	}
 	
 	@SuppressWarnings({ "unchecked", "unused" })
-	private JSONArray convertSAPProductToC2SProducts() {
+	private JSONArray convertSAPProductToC2SProduct() {
 		
 		IFields prodfields = productsrecordset.getFields();
 		IItemWarehouseInfo whsinfo = products.getWhsInfo();
 		IItems_Prices prodprices = products.getPriceList();
 		IUoMPrices uomprices = prodprices.getUoMPrices();
-		IItemUnitOfMeasurements units = products.getUnitOfMeasurements();
+		IFields produserfields = products.getUserFields().getFields();
 		IUnitOfMeasurementGroupParamsCollection unitslist = uomgrpsvc.getList();
 		IItemBarCodes barcodes = products.getBarCodes();
 		String thisbarcode = products.getBarCode();
@@ -632,18 +655,6 @@ public class SAPB1Proxy {
 					ServiceLogger.log("product last_updated = "+product.get("last_updated"));
 					offsetproductscurr=offsetproductscurr+1;
 				}
-				if(item.getName().equals("U_Modelo")) {
-					product.put("brand",""+item.getValue());
-				}
-				if(item.getName().equals("U_Color")) {
-					product.put("model",""+item.getValue());
-				}
-				if(item.getName().equals("U_Material")) {
-					//map other fields
-				}
-				if(item.getName().equals("ItmsGrpCod")) {
-					//map other fields
-				}
 			}catch(Exception e) {}
 		}
 		
@@ -651,6 +662,36 @@ public class SAPB1Proxy {
 		product.put("variations", variations);
 		JSONObject variation = new JSONObject();
 		variations.add(variation);
+
+		int itemgroupcode = (int) products.getItemsGroupCode();
+		product.put("_id",""+products.getItemCode());
+		product.put("sku",""+products.getItemCode());
+		product.put("title",""+products.getItemName());
+		product.put("url","");
+		product.put("mpn","");
+		product.put("model","");
+		product.put("description","");
+
+		for(int i=0; i<prodfields.getCount(); i++) {
+			IField prodfield = prodfields.item(i);
+			try {
+				if(prodfield.getName().equals("FechaChida")) {
+					Date updatedate = (Date) prodfield.getValue();
+					String updatedatewithpaging;
+					if(!last_ts_discovered.equals(""+updatedate.getTime()) && !last_ts_discovered.equals("")) {
+						offsetproductscurr = 0;
+					}
+					offsetproductsdate = updatedate.getTime();
+					last_ts_discovered = ""+updatedate.getTime();
+					updatedatewithpaging = updatedate.getTime()+" - "+offsetproductscurr;
+					product.put("last_updated", updatedatewithpaging);
+					ServiceLogger.log("product last_updated = "+product.get("last_updated"));
+					offsetproductscurr=offsetproductscurr+1;
+					break;
+				}
+			}catch(Exception e) {}
+			prodfield.release();
+		}
 		
 		JSONArray availabilities = new JSONArray();
 		variation.put("availabilities", availabilities);
@@ -672,7 +713,7 @@ public class SAPB1Proxy {
 					whsinfo.setCurrentLine(i);
 					for(int j=0; j<subsetwarehousecodes.length; j++) {
 						String subsetwarehousecode = subsetwarehousecodes[j];
-						if(subsetwarehousecode.trim().equals(whsinfo.getWarehouseCode().trim())) {
+						if(subsetwarehousecode.trim().equals(""+whsinfo.getWarehouseCode().trim())) {
 							JSONObject availability = new JSONObject();
 							availabilities.add(availability);
 							availability.put("tag",""+subsetwarehousecode);
@@ -685,7 +726,7 @@ public class SAPB1Proxy {
 			JSONObject availability = new JSONObject();
 			availabilities.add(availability);
 			availability.put("tag","default");
-			availability.put("quantity",products.getQuantityOnStock()+0);
+			availability.put("quantity",(double) products.getQuantityOnStock());
 		}
 
 		JSONArray prices = new JSONArray();
@@ -695,16 +736,16 @@ public class SAPB1Proxy {
 		price.put("tag", "default");
 		price.put("currency", delegate.config.getProperty("defaultcurrency"));
 		String pricelistoverride = delegate.config.getProperty("pricelistoverride");
-		double priceval = prodprices.getPrice();
+		double priceval = (double) prodprices.getPrice();
 		if(pricelistoverride != null && pricelistoverride.length() > 0) {
 			for(int i=0; i<prodprices.getCount(); i+=1) {
 				prodprices.setCurrentLine(i);
 				if(prodprices.getPriceListName().equals(pricelistoverride)) {
-					priceval = prodprices.getPrice();
+					priceval = (double) prodprices.getPrice();
 				}
 			}
 		}
-		price.put("number", priceval+0);
+		price.put("number", priceval);
 		
 		String imgurl = "";
 		String picurl = products.getPicture();
@@ -734,7 +775,7 @@ public class SAPB1Proxy {
 		JSONArray videos = new JSONArray();
 		variation.put("videos", videos);
 		
-		variation.put("barcode", ""+products.getBarCode());
+		variation.put("barcode", thisbarcode);
 		variation.put("size", "");
 		variation.put("color", "");
 
@@ -806,7 +847,6 @@ public class SAPB1Proxy {
 													int therightstock = (int)(currentstock/packagesize);
 													explodedav.put("quantity", therightstock);											
 												}else {
-													int therightstock = currentstock;
 													explodedav.put("quantity", currentstock);
 												}
 											}
@@ -819,7 +859,6 @@ public class SAPB1Proxy {
 											}
 										}
 										if(explodedvar.containsKey("barcode")) {
-											String barcode = ""+explodedvar.get("barcode");
 											if(thisbarcode != null && thisbarcode.length() > 0) {
 												explodedvar.put("barcode", thisbarcode);
 											}
@@ -850,7 +889,7 @@ public class SAPB1Proxy {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private JSONObject convertSAPOrderToC2SOrder() {
+	private JSONObject convertSAPOrderToC2SOrder(Documents orders) {
 		
 		String orderid = ""+orders.getDocNum();
 		String status = orders.getDocumentStatus().equals(SBOCOMConstants.BoSoStatus_so_Open) ? "open" : (orders.getDocumentStatus().equals(SBOCOMConstants.BoSoStatus_so_Closed) ? "closed" : "unknown");
@@ -946,6 +985,11 @@ public class SAPB1Proxy {
 					if(orderfield.getName().equals("UpdateDate")) {
 						Date updatedate = (Date) orderfield.getValue();
 						String updatedatewithpaging;
+						if(!last_ts_discovered.equals(""+updatedate.getTime()) && !last_ts_discovered.equals("")) {
+							offsetorderscurr = 0;
+						}
+						offsetordersdate = updatedate.getTime();
+						last_ts_discovered = ""+updatedate.getTime();
 						updatedatewithpaging = updatedate.getTime()+" - "+offsetorderscurr;
 						order.put("last_updated", updatedatewithpaging);
 						ServiceLogger.log("order last_updated = "+order.get("last_updated"));
@@ -964,7 +1008,7 @@ public class SAPB1Proxy {
 		
 		setProductsStreamCursor("0");
 		products.getByKey(c2sprodid);
-		JSONArray c2sprods = convertSAPProductToC2SProducts();
+		JSONArray c2sprods = convertSAPProductToC2SProduct();
 		System.out.println("c2sprods.toJSONString="+c2sprods.toJSONString());
 		
 	}
