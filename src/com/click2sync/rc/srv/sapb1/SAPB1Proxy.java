@@ -96,6 +96,7 @@ public class SAPB1Proxy {
 			myCompany.setDbPassword(delegate.config.getProperty("dbpassword"));
 			
 		} catch(Exception e) {
+			e.printStackTrace();
 			System.out.println(e);
 		} finally {
 			
@@ -200,8 +201,8 @@ public class SAPB1Proxy {
 	
 	public boolean hasMoreProducts(String offsetdate) throws NoSAPB1Exception {
 
-		ServiceLogger.log("hasMoreProducts: "+offsetdate);
-		ServiceLogger.log("hasMoreProductsCount:"+products.getBrowser().getRecordCount()+" isEoF:"+products.getBrowser().isEoF()+" isBoF:"+products.getBrowser().isBoF());
+		//ServiceLogger.log("hasMoreProducts: "+offsetdate);
+		//ServiceLogger.log("hasMoreProductsCount:"+products.getBrowser().getRecordCount()+" isEoF:"+products.getBrowser().isEoF()+" isBoF:"+products.getBrowser().isBoF());
 		if(explodedprodsbuffer != null && explodedprodsbuffer.size() > 0) {
 			return true;
 		} else {
@@ -292,8 +293,8 @@ public class SAPB1Proxy {
 	
 	public boolean hasMoreOrders(String offsetdate) throws NoSAPB1Exception {
 		
-		ServiceLogger.log("hasMoreOrders: "+offsetdate);
-		ServiceLogger.log("hasMoreOrdersCount:"+orders.getBrowser().getRecordCount()+" isEoF:"+orders.getBrowser().isEoF()+" isBoF:"+orders.getBrowser().isBoF());
+		//ServiceLogger.log("hasMoreOrders: "+offsetdate);
+		//ServiceLogger.log("hasMoreOrdersCount:"+orders.getBrowser().getRecordCount()+" isEoF:"+orders.getBrowser().isEoF()+" isBoF:"+orders.getBrowser().isBoF());
 		if(orders.getBrowser().isEoF()) {
 			
 			String newoffset = offsetordersdate+" - "+offsetorderscurr;
@@ -652,7 +653,7 @@ public class SAPB1Proxy {
 					String updatedatewithpaging;
 					updatedatewithpaging = updatedate.getTime()+" - "+offsetproductscurr;
 					product.put("last_updated", updatedatewithpaging);
-					ServiceLogger.log("product last_updated = "+product.get("last_updated"));
+					//ServiceLogger.log("product last_updated = "+product.get("last_updated"));
 					offsetproductscurr=offsetproductscurr+1;
 				}
 			}catch(Exception e) {}
@@ -685,7 +686,7 @@ public class SAPB1Proxy {
 					last_ts_discovered = ""+updatedate.getTime();
 					updatedatewithpaging = updatedate.getTime()+" - "+offsetproductscurr;
 					product.put("last_updated", updatedatewithpaging);
-					ServiceLogger.log("product last_updated = "+product.get("last_updated"));
+					//ServiceLogger.log("product last_updated = "+product.get("last_updated"));
 					offsetproductscurr=offsetproductscurr+1;
 					break;
 				}
@@ -992,7 +993,7 @@ public class SAPB1Proxy {
 						last_ts_discovered = ""+updatedate.getTime();
 						updatedatewithpaging = updatedate.getTime()+" - "+offsetorderscurr;
 						order.put("last_updated", updatedatewithpaging);
-						ServiceLogger.log("order last_updated = "+order.get("last_updated"));
+						//ServiceLogger.log("order last_updated = "+order.get("last_updated"));
 						offsetorderscurr=offsetorderscurr+1;
 						break;
 					}
