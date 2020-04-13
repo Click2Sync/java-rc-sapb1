@@ -179,6 +179,7 @@ public class SAPB1Proxy {
 		ServiceLogger.log("cursor: "+offset);
 		ServiceLogger.log("query products: "+query);
 		productsrecordset.doQuery(query);
+		productsrecordset.moveFirst();
 		ServiceLogger.log("resultsetcount:"+productsrecordset.getRecordCount()+" isEoF:"+productsrecordset.isEoF()+" isBoF:"+productsrecordset.isBoF());
 		if(productsrecordset.getRecordCount() > 0 && !productsrecordset.isEoF()) {
 			products.getBrowser().setRecordset(productsrecordset);
@@ -645,7 +646,7 @@ public class SAPB1Proxy {
 		product.put("model","");
 		product.put("description",""+products.getUser_Text());
 		
-		for(int i=0; i<prodfields.getCount(); i++) {
+		/*for(int i=0; i<prodfields.getCount(); i++) {
 			IField item = prodfields.item(i);
 			try {
 				if(item.getName().equals("UpdateDate")) {
@@ -657,7 +658,7 @@ public class SAPB1Proxy {
 					offsetproductscurr=offsetproductscurr+1;
 				}
 			}catch(Exception e) {}
-		}
+		}*/
 		
 		JSONArray variations = new JSONArray();
 		product.put("variations", variations);
@@ -676,7 +677,7 @@ public class SAPB1Proxy {
 		for(int i=0; i<prodfields.getCount(); i++) {
 			IField prodfield = prodfields.item(i);
 			try {
-				if(prodfield.getName().equals("FechaChida")) {
+				if(prodfield.getName().equals("FechaFinal")) {
 					Date updatedate = (Date) prodfield.getValue();
 					String updatedatewithpaging;
 					if(!last_ts_discovered.equals(""+updatedate.getTime()) && !last_ts_discovered.equals("")) {
@@ -1011,6 +1012,20 @@ public class SAPB1Proxy {
 		products.getByKey(c2sprodid);
 		JSONArray c2sprods = convertSAPProductToC2SProduct();
 		System.out.println("c2sprods.toJSONString="+c2sprods.toJSONString());
+		
+	}
+	
+	public void testquery() {
+		
+		Scanner sc = new Scanner(System.in);
+		String rawquery = "";
+		while(sc.hasNextLine()) {
+			String thisline = sc.nextLine(); 
+			rawquery += thisline+"\n";
+		}
+		sc.close();
+		productsrecordset.doQuery(rawquery);
+		ServiceLogger.log("resultsetcount:"+productsrecordset.getRecordCount()+" isEoF:"+productsrecordset.isEoF()+" isBoF:"+productsrecordset.isBoF());
 		
 	}
 	

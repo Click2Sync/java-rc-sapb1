@@ -126,6 +126,7 @@ public class Main {
 			boolean testquotationorder = false;
 			boolean testhana = false;
 			boolean testbuildc2sproduct = false;
+			boolean testquery = false;
 			String c2sprodid = "";
 			for(int i=0; i<args.length; i+=1) {
 				System.out.println(args[i]);
@@ -140,6 +141,9 @@ public class Main {
 				}
 				if(args[i].equals("--testhana")) {
 					testhana = true;
+				}
+				if(args[i].equals("--testquery")) {
+					testquery = true;
 				}
 				if(args[i].startsWith("--testbuildc2sproduct")) {
 					testbuildc2sproduct = true;
@@ -160,6 +164,9 @@ public class Main {
 				} else if(testbuildc2sproduct){
 					app = new Main();
 					app.testbuildc2sproduct(c2sprodid);
+				} else if(testquery){
+					app = new Main();
+					app.testquery();
 				}else {
 					System.out.println("Could not understand the intended operation");
 				}
@@ -207,6 +214,17 @@ public class Main {
 			
 			sap.sense();
 			sap.testbuildc2sproduct(c2sprodid);
+		} catch (NoSAPB1Exception e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	private void testquery() {
+		
+		try {
+			sap.sense();
+			sap.testquery();
 		} catch (NoSAPB1Exception e) {
 			e.printStackTrace();
 		}
@@ -266,9 +284,11 @@ public class Main {
 						while(sap.hasMoreProducts(offsetdate)) {
 							JSONObject product = sap.nextProduct();
 							c2s.setProductToUploadOnBuffer(product, strategy);
+							//flat rest = true
 						}
 					}
 				}
+				//if rest != true
 				c2s.setFinishProductUpload(strategy);
 				offsetdate = c2s.getCursorOffset();
 				entity = c2s.getEntity();
@@ -286,16 +306,20 @@ public class Main {
 						while(sap.hasMoreOrders(offsetdate)) {
 							JSONObject order = sap.nextOrder();
 							c2s.setOrderToUploadOnBuffer(order, strategy);
+							//flat rest = true
 						}
 					}
 				}
+				//if rest != true
 				c2s.setFinishOrderUpload(strategy);
 				offsetdate = c2s.getCursorOffset();
 			}
+			//if rest != true
 			//when no more in SAP, send finish command
 			c2s.setFinishUpload(strategy);
 			upstreamstatus = c2s.getUpstreamStatus();
 		}
+		//if rest != true
 		if(upstreamstatus != null && (upstreamstatus.equals("finished") || upstreamstatus.equals("finishing"))) {
 			//if is is finished, wait until server finishes
 			ServiceLogger.log("Upload status is finished... waiting for C2S to complete the overall process...");

@@ -8,6 +8,7 @@ import org.apache.http.StatusLine;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -67,7 +68,7 @@ public class HTTPWrapper {
 	}
 	
 	public static JSONObject post(String path, JSONObject body, Properties config) throws C2SUnreachableException {
-		ServiceLogger.log("entered POST ");
+		
 		String url = ""+config.getProperty("c2shostnameprefix")+path;
 		int statuscode = -1;
 		
@@ -75,8 +76,8 @@ public class HTTPWrapper {
 			
 			CloseableHttpClient httpclient = HttpClients.createDefault();
 			HttpPost httpPost = new HttpPost(url);
-			StringEntity reqBody = new StringEntity(body.toJSONString());
-			httpPost.setHeader("Content-type", "application/json");
+			StringEntity reqBody = new StringEntity(body.toJSONString(), ContentType.APPLICATION_JSON);
+			httpPost.setHeader("Content-type", "application/json; charset=utf-8");
 			httpPost.setEntity(reqBody);
 			
 			CloseableHttpResponse response1 = httpclient.execute(httpPost);
