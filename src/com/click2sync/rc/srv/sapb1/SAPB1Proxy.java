@@ -777,6 +777,13 @@ public class SAPB1Proxy {
 		JSONArray videos = new JSONArray();
 		variation.put("videos", videos);
 		
+		boolean usetuple = false;
+		if(usetuple) {
+			JSONArray barcodetuple = new JSONArray();
+			barcodetuple.add(""+products.getItemCode());
+			barcodetuple.add(""+products.getBarCode());
+			thisbarcode = barcodetuple.toJSONString();
+		}
 		variation.put("barcode", thisbarcode);
 		variation.put("size", "");
 		variation.put("color", "");
